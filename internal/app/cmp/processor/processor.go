@@ -3,6 +3,8 @@ package processor
 import (
 	"context"
 	"time"
+
+	"github.com/martketplace-vkr/pkg/logger/log"
 )
 
 const cmpName = "processor"
@@ -37,8 +39,11 @@ func (c *cmp) Start(ctx context.Context) error {
 		defer ticker.Stop()
 
 		for {
-			_ = c.svc.Process(runCtx)
-
+			err := c.svc.Process(runCtx)
+			if err != nil {
+				log.Errorf("failed to scan %s", err)
+			}
+			
 			select {
 			case <-runCtx.Done():
 				return

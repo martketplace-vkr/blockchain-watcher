@@ -73,7 +73,7 @@ func (s *Service) Process(ctx context.Context) error {
 	if err == nil {
 		fromBlock = cursor.LastBlock + 1
 	} else if !pg.IsNotFound(err) {
-		return err
+		return fmt.Errorf("failed get cursor: %s", err)
 	}
 
 	if latestBlock < fromBlock {
@@ -87,7 +87,7 @@ func (s *Service) Process(ctx context.Context) error {
 
 	transfers, err := s.provider.Transfers(ctx, fromBlock, toBlock)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch transfers: %s", err)
 	}
 
 	for _, transfer := range transfers {
@@ -96,11 +96,16 @@ func (s *Service) Process(ctx context.Context) error {
 		}
 
 		if err := s.processTransfer(ctx, transfer, latestBlock); err != nil {
-			return err
+			return fmt.Errorf("failed process transfer: %s", err)
 		}
 	}
 
-	return s.repository.UpsertCursor(ctx, s.cfg.Network, toBlock, time.Now().UTC())
+	err = s.repository.UpsertCursor(ctx, s.cfg.Network, toBlock, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("failed to update cursor: %s", err)
+	}
+
+	return nil
 }
 
 func (s *Service) processTransfer(ctx context.Context, transfer mocksource.ChainTransfer, latestBlock int64) error {
@@ -109,7 +114,7 @@ func (s *Service) processTransfer(ctx context.Context, transfer mocksource.Chain
 		if pg.IsNotFound(err) {
 			return nil
 		}
-		return err
+		return fmt.Errorf("failed get address: %s", err)
 	}
 
 	confirmations := latestBlock - transfer.BlockNumber + 1
@@ -124,7 +129,7 @@ func (s *Service) processTransfer(ctx context.Context, transfer mocksource.Chain
 
 	existing, err := s.repository.GetDeposit(ctx, transfer.Network, transfer.TxHash, transfer.LogIndex)
 	if err != nil && !pg.IsNotFound(err) {
-		return err
+		return fmt.Errorf("failed check deposit: %s", err)
 	}
 
 	now := time.Now().UTC()
