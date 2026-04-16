@@ -16,8 +16,10 @@ import (
 const tronAPIKeyHeader = "TRON-PRO-API-KEY"
 
 type Provider struct {
-	cfg    Config
-	client *http.Client
+	cfg     Config
+	network string
+	asset   string
+	client  *http.Client
 }
 
 type latestBlockResponse struct {
@@ -40,9 +42,11 @@ type contractEventsResponse struct {
 	} `json:"meta"`
 }
 
-func New(cfg Config) *Provider {
+func New(cfg Config, network, asset string) *Provider {
 	return &Provider{
-		cfg: cfg,
+		cfg:     cfg,
+		network: network,
+		asset:   asset,
 		client: &http.Client{
 			Timeout: cfg.Timeout,
 		},
@@ -134,13 +138,24 @@ func (p *Provider) blockTransfers(ctx context.Context, blockNumber int64) ([]moc
 		}
 
 		for _, event := range payload.Data {
+			fromAddress, err := normalizeEventAddress(event.Result["from"])
+			if err != nil {
+				return nil, err
+			}
+			toAddress, err := normalizeEventAddress(event.Result["to"])
+			if err != nil {
+				return nil, err
+			}
+
 			transfer := mocksource.ChainTransfer{
 				TxHash:      event.TransactionID,
 				LogIndex:    event.EventIndex,
 				BlockNumber: event.BlockNumber,
-				FromAddress: event.Result["from"],
-				ToAddress:   event.Result["to"],
+				FromAddress: fromAddress,
+				ToAddress:   toAddress,
 				Amount:      event.Result["value"],
+				Asset:       p.asset,
+				Network:     p.network,
 			}
 
 			if transfer.TxHash == "" || transfer.ToAddress == "" || transfer.Amount == "" {

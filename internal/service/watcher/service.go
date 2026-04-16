@@ -91,10 +91,6 @@ func (s *Service) Process(ctx context.Context) error {
 	}
 
 	for _, transfer := range transfers {
-		if transfer.Network != s.cfg.Network || transfer.Asset != s.cfg.Asset {
-			continue
-		}
-
 		if err := s.processTransfer(ctx, transfer, latestBlock); err != nil {
 			return fmt.Errorf("failed process transfer: %s", err)
 		}

@@ -34,7 +34,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 
 	outboxCmp := outboxComponent.New(cfg.Outbox, outboxCl)
 	repo := repository.New(pg.DB)
-	provider := trongrid.New(cfg.Tron)
+	provider := trongrid.New(cfg.Tron, cfg.Processor.Network, cfg.Processor.Asset)
 	service := watcherservice.New(repo, provider, outboxCmp, cfg.Processor)
 	processorCmp := processorComponent.New(cfg.Processor, service)
 
